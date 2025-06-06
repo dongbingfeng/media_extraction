@@ -1,0 +1,60 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Subtitle Processing Guide
+
+This guide explains how subtitle processing works in the video processing tool.
+
+## Subtitle Generation
+
+The subtitle generation process uses Whisper AI and follows these steps:
+
+1. Audio Extraction:
+   - Use `extract_audio_from_video()` to get audio from video
+   - Supports multiple audio tracks (default: track 0)
+
+2. Whisper Processing:
+   - `extract_subtitles_from_audio()` uses Whisper model
+   - Supports different model sizes: tiny, base, small, medium, large
+   - Can load/save transcription results to JSON
+
+## Subtitle Translation
+
+The translation process:
+1. Uses Google Translate API via `googletrans`
+2. Processes subtitles in batches of 10 segments
+3. Supports multiple language pairs
+4. Preserves timing information during translation
+
+## Subtitle Format
+
+Subtitles are stored in `SrtBlock` objects with:
+- Block number
+- Start/end timestamps
+- Text content
+- Raw timestamps in seconds
+
+## Usage Examples
+
+1. Extract and translate subtitles:
+```bash
+python video_process.py extract_srt input.mp4 output.srt --model base
+```
+
+2. Translate existing subtitles:
+```bash
+python video_process.py translate input.srt output.srt
+```
+
+## Best Practices
+
+1. For Japanese content:
+   - Use `src_lang="ja"` for accurate transcription
+   - Consider using larger Whisper models for better accuracy
+
+2. For translation:
+   - Default target language is Chinese (zh-cn)
+   - Adjust batch size based on content length
+   - Monitor translation quality for technical terms

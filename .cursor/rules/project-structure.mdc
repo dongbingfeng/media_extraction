@@ -1,0 +1,49 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Video Processing Tool
+
+This is a Python-based video processing tool that provides functionality for:
+- Extracting audio from videos
+- Generating subtitles using Whisper AI
+- Translating subtitles between languages
+- Splitting audio files based on content markers
+- Text-to-speech conversion
+
+## Main Components
+
+The main entry point is [video_process.py](mdc:video_process.py), which contains several key classes and functions:
+
+### Core Classes
+- `SrtBlock`: Represents a subtitle block with timing and text information
+
+### Key Functions
+1. Audio Processing:
+   - `extract_audio_from_video()`: Extracts audio from video files
+   - `split_audio_file()`: Splits audio files into segments
+
+2. Subtitle Processing:
+   - `extract_subtitles_from_audio()`: Generates subtitles using Whisper AI
+   - `translate_srt_blocks()`: Translates subtitle blocks
+   - `save_subtitle_file()`: Saves subtitles in SRT format
+
+3. Text-to-Speech:
+   - `text_to_speech()`: Converts text to speech
+   - `batch_text_to_speech()`: Processes multiple text segments
+
+## Command Line Interface
+
+The tool provides several commands:
+- `translate`: Translate existing SRT files
+- `extract_audio`: Extract audio from video files
+- `extract_srt`: Extract and translate subtitles from videos
+- `split`: Split audio files based on content markers
+
+## Dependencies
+- whisper: For speech recognition
+- ffmpeg: For audio/video processing
+- googletrans: For translation
+- gtts: For text-to-speech conversion
+- pydub: For audio manipulation

@@ -1,0 +1,73 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Audio Processing Guide
+
+This guide explains the audio processing capabilities of the video processing tool.
+
+## Audio Extraction
+
+The tool can extract audio from video files using FFmpeg:
+- Supports multiple audio tracks
+- Converts to MP3 format
+- Sets sample rate to 16kHz for optimal Whisper processing
+- Preserves original audio quality
+
+## Audio Splitting
+
+The `split_audio_file()` function:
+1. Detects content markers in audio
+2. Splits audio at specific time points
+3. Creates separate audio files for each segment
+4. Names files with sequential numbers and content markers
+
+## Text-to-Speech
+
+The tool provides two TTS functions:
+
+1. Single text conversion:
+   - `text_to_speech()` for individual text segments
+   - Supports multiple languages
+   - Configurable speech speed
+   - Customizable TLD for Google services
+
+2. Batch processing:
+   - `batch_text_to_speech()` for multiple segments
+   - Creates numbered output files
+   - Maintains consistent settings across segments
+
+## Usage Examples
+
+1. Extract audio from video:
+```bash
+python video_process.py extract_audio input.mp4
+```
+
+2. Split audio file:
+```bash
+python video_process.py split input.mp3 --model base
+```
+
+3. Convert text to speech:
+```python
+text_to_speech("Hello world", "output.mp3", language="en")
+```
+
+## Best Practices
+
+1. Audio Extraction:
+   - Use appropriate audio track for best quality
+   - Consider audio format compatibility
+   - Monitor file sizes for large videos
+
+2. Audio Splitting:
+   - Use appropriate Whisper model size
+   - Verify content markers are detected correctly
+   - Check segment boundaries
+
+3. Text-to-Speech:
+   - Choose appropriate language code
+   - Consider speech speed for clarity
+   - Use batch processing for efficiency
