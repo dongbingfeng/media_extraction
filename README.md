@@ -36,7 +36,7 @@ pip install -r requirements.txt
 ### Extract Subtitles from Video
 
 ```bash
-python srt_translator.py extract video_file.mp4 output.srt [--model MODEL_SIZE] [--model-dir MODEL_DIRECTORY]
+python video_process.py extract video_file.mp4 output.srt [--model MODEL_SIZE] [--model-dir MODEL_DIRECTORY]
 ```
 
 Arguments:
@@ -48,10 +48,10 @@ Arguments:
 Examples:
 ```bash
 # Use default model directory
-python srt_translator.py extract movie.mp4 subtitles.srt --model base
+python video_process.py extract movie.mp4 subtitles.srt --model base
 
 # Use custom model directory
-python srt_translator.py extract movie.mp4 subtitles.srt --model base --model-dir /path/to/models
+python video_process.py extract movie.mp4 subtitles.srt --model base --model-dir /path/to/models
 ```
 
 The transcription process will show real-time progress, including:
@@ -62,7 +62,7 @@ The transcription process will show real-time progress, including:
 ### Translate Existing Subtitles
 
 ```bash
-python srt_translator.py translate input.srt output.srt
+python video_process.py translate input.srt output.srt
 ```
 
 Arguments:
@@ -71,7 +71,7 @@ Arguments:
 
 Example:
 ```bash
-python srt_translator.py translate subtitles.srt translated_subtitles.srt
+python video_process.py translate subtitles.srt translated_subtitles.srt
 ```
 
 ## Model Storage

@@ -50,7 +50,7 @@ def extract_audio_from_video(video_path, audio_track=0):
         raise Exception("Failed to extract audio from video file")
     return audio_file
 
-def extract_subtitles_from_audio(audio_file, model_size="base", model_dir=None, load_from_json=False, dump_to_json=False, src_lang="ja"):
+def extract_subtitles_from_audio(audio_file, model_size="base", model_dir=None, load_from_json=False, dump_to_json=False, src_lang="ja", output_srt=True, initial_prompt=""):
     """
     Extract subtitles from a video file using Whisper and save as SRT.
     
@@ -75,7 +75,7 @@ def extract_subtitles_from_audio(audio_file, model_size="base", model_dir=None, 
         
         print(f"Loading Whisper {model_size} model...")
         model = whisper.load_model(model_size)
-        result = model.transcribe(audio_file, verbose=True, language=src_lang)
+        result = model.transcribe(audio_file, verbose=True, language=src_lang, initial_prompt=initial_prompt)
 
     #########################################################
     # load audio and pad/trim it to fit 30 seconds
@@ -111,13 +111,17 @@ def extract_subtitles_from_audio(audio_file, model_size="base", model_dir=None, 
         print(f"Transcription saved to: {json_output_path}")
 
     original_srt_blocks = []
-    for i, segment in enumerate(result['segments'], start=1):
-        # Format timestamps
-        start_time = format_timestamp(segment['start'])
-        end_time = format_timestamp(segment['end'])
-        text = segment['text']
-        srt_block = SrtBlock(i, start_time, end_time, text, segment['start'], segment['end'])
-        original_srt_blocks.append(srt_block)
+    if output_srt:
+        for i, segment in enumerate(result['segments'], start=1):
+            # Format timestamps
+            start_time = format_timestamp(segment['start'])
+            end_time = format_timestamp(segment['end'])
+            text = segment['text']
+            srt_block = SrtBlock(i, start_time, end_time, text, segment['start'], segment['end'])
+            original_srt_blocks.append(srt_block)
+    else:
+        for i, segment in enumerate(result['segments'], start=1):
+            original_srt_blocks.append(segment['text'])
     return original_srt_blocks
 
 def find_time_points(srt_blocks):
@@ -235,17 +239,19 @@ def translate_srt_blocks(srt_blocks, target_lang="zh-cn", src_lang="ja"):
             translated_srt_blocks.append(translated_srt_block)
     return translated_srt_blocks
 
-def save_subtitle_file(srt_blocks, output_srt_path):
+def save_subtitle_file(srt_blocks, output_srt_path, output_srt=True):
     print("Converting to SRT format...")
     with open(output_srt_path, 'w', encoding='utf-8') as f:
         for str_block in srt_blocks:
-            # Format timestamps
-            start_time = str_block.start_time
-            end_time = str_block.end_time
-            f.write(f"{str_block.number}\n")
-            f.write(f"{start_time} --> {end_time}\n")
-            f.write(f"{str_block.text.strip()}\n\n")
-    
+            if output_srt:
+                # Format timestamps
+                start_time = str_block.start_time
+                end_time = str_block.end_time
+                f.write(f"{str_block.number}\n")
+                f.write(f"{start_time} --> {end_time}\n")
+                f.write(f"{str_block.text.strip()}\n\n")
+            else:
+                f.write(f"{str_block.strip()}\n")
     print(f"Subtitles extracted and saved to: {output_srt_path}")
     return
 
@@ -395,17 +401,30 @@ def main():
     extract_parser = subparsers.add_parser('extract_srt', help='Extract subtitles from a video file')
     extract_parser.add_argument('video_file', help='Input video file path')
     extract_parser.add_argument('output_srt', help='Output SRT file path')
+    extract_parser.add_argument('--src-lang', default='ja', help='Source language for transcription (default: ja)')
+    extract_parser.add_argument('--track', default='0', help='Audio track number to extract (default: 0)')
     extract_parser.add_argument('--model', default='base', choices=['tiny', 'base', 'small', 'medium', 'large', 'large-v3', 'large-v3-turbo', 'turbo'],
                               help='Whisper model size (default: base)')
     extract_parser.add_argument('--model-dir', help='Custom directory to store/load Whisper models')
-    
+    extract_parser.add_argument('--initial-prompt', default="", help='Initial prompt for Whisper transcription (default: empty)')
+    # Parse for video subtitle extraction and translation
+    extract_parser = subparsers.add_parser('translate_srt', help='Extract subtitles from a video file')
+    extract_parser.add_argument('video_file', help='Input video file path')
+    extract_parser.add_argument('output_srt', help='Output SRT file path')
+    extract_parser.add_argument('--track', default='0', help='Audio track number to extract (default: 0)')
+    extract_parser.add_argument('--model', default='base', choices=['tiny', 'base', 'small', 'medium', 'large', 'large-v3', 'large-v3-turbo', 'turbo'],
+                              help='Whisper model size (default: base)')
+    extract_parser.add_argument('--model-dir', help='Custom directory to store/load Whisper models')
+    extract_parser.add_argument('--src-lang', default='ja', help='Source language for transcription (default: ja)')
+    extract_parser.add_argument('--target-lang', default='zh-cn', help='Target language for translation (default: zh-cn)')
+    extract_parser.add_argument('--initial-prompt', default="", help='Initial prompt for Whisper transcription (default: empty)')
     # Parser for audio split
     extract_parser = subparsers.add_parser('split', help='Split audio file')
     extract_parser.add_argument('audio_file', help='Input audio file path')
     extract_parser.add_argument('--model', default='base', choices=['tiny', 'base', 'small', 'medium', 'large', 'large-v3', 'large-v3-turbo', 'turbo'],
                               help='Whisper model size (default: base)')
     extract_parser.add_argument('--model-dir', help='Custom directory to store/load Whisper models')
-
+    extract_parser.add_argument('--initial-prompt', default="", help='Initial prompt for Whisper transcription (default: empty)')
     args = parser.parse_args()
     
     try:
@@ -418,13 +437,18 @@ def main():
             print(f"Audio extracted successfully!")
             print(f"Audio file saved.")
         elif args.command == 'extract_srt':
-            audio_file = extract_audio_from_video(args.video_file, audio_track=1)
-            original_srt_blocks = extract_subtitles_from_audio(audio_file, args.model, args.model_dir, load_from_json=False, dump_to_json=False, src_lang="ja")
+            audio_file = extract_audio_from_video(args.video_file, audio_track=int(args.track))
+            output_srt = args.output_srt.endswith('.srt')
+            original_srt_blocks = extract_subtitles_from_audio(audio_file, args.model, args.model_dir, load_from_json=False, dump_to_json=False, src_lang=args.src_lang, output_srt=output_srt, initial_prompt=args.initial_prompt if hasattr(args, 'initial_prompt') else "")
+            save_subtitle_file(original_srt_blocks, args.output_srt, output_srt=output_srt)
+        elif args.command == 'translate_srt':
+            audio_file = extract_audio_from_video(args.video_file, audio_track=int(args.track))
+            original_srt_blocks = extract_subtitles_from_audio(audio_file, args.model, args.model_dir, load_from_json=False, dump_to_json=False, src_lang= args.src_lang, output_srt=True, initial_prompt=args.initial_prompt if hasattr(args, 'initial_prompt') else "")
             save_subtitle_file(original_srt_blocks, args.output_srt)
-            translated_srt_blocks = translate_srt_blocks(original_srt_blocks, target_lang="zh-cn", src_lang="ja")
-            save_subtitle_file(translated_srt_blocks, args.output_srt.replace(".srt", "_zh-cn.srt"))
+            translated_srt_blocks = translate_srt_blocks(original_srt_blocks, target_lang=args.target_lang , src_lang= args.src_lang)
+            save_subtitle_file(translated_srt_blocks, args.output_srt.replace(".srt", f"_{args.target_lang}.srt"))        
         elif args.command == 'split':
-            subtitle_blocks = extract_subtitles_from_audio(args.audio_file, args.model, args.model_dir, load_from_json=False, dump_to_json=True, src_lang="en")
+            subtitle_blocks = extract_subtitles_from_audio(args.audio_file, args.model, args.model_dir, load_from_json=False, dump_to_json=True, src_lang="en", output_srt=True, initial_prompt=args.initial_prompt if hasattr(args, 'initial_prompt') else "")
             time_points = find_time_points(subtitle_blocks)
             split_audio_file(args.audio_file, time_points)
         else:
