@@ -7,6 +7,64 @@ import os
 from datetime import timedelta
 import time
 import json
+import openrouter
+from openrouter import OpenRouter
+
+def summarize_content(text, model="deepseek/deepseek-chat-v3-0324:free"):
+    """
+    Summarize content using OpenRouter API with Claude 3 Opus model.
+    
+    Args:
+        text (str): Text content to summarize
+        model (str): Model to use for summarization
+        
+    Returns:
+        str: Summarized text
+    """
+    try:
+        client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
+        user_prompt = """
+        这是一份讲授宏观经济学课程的录音文稿，请整理这份文稿，满足以下几个条件：
+        1. 如果不是简体中文，转换成简体中文。
+        2. 保持原来的语句和表达，仅仅去掉无意义的重复词语。
+        3. 添加标点符号。
+        4. 切分段落。
+        5. 如果碰到公式，使用纯文本输出。
+        请注意，最大限度忠于原文。
+        """
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that processes content concisely."},
+                {"role": "user", "content": f"{user_prompt}:\n\n{text}"}
+            ],
+            max_tokens=500
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Error during summarization: {str(e)}")
+        return text  # Return original text if summarization fails
+
+def process_subtitles_for_summary(srt_blocks):
+    """
+    Process SRT blocks and create a summary using OpenRouter.
+    
+    Args:
+        srt_blocks (list): List of SrtBlock objects
+        
+    Returns:
+        str: Summarized content
+    """
+    # Combine all subtitle text
+    full_text = " ".join([block.text for block in srt_blocks])
+    
+    # Get summary using OpenRouter
+    summary = summarize_content(full_text)
+    
+    return summary
+
 
 class SrtBlock:
     def __init__(self, number, start_time, end_time, text, ts_start, ts_end):
@@ -239,7 +297,7 @@ def translate_srt_blocks(srt_blocks, target_lang="zh-cn", src_lang="ja"):
             translated_srt_blocks.append(translated_srt_block)
     return translated_srt_blocks
 
-def save_subtitle_file(srt_blocks, output_srt_path, output_srt=True):
+def save_subtitle_file(srt_blocks, output_srt_path, output_srt=True, summary=False):
     print("Converting to SRT format...")
     with open(output_srt_path, 'w', encoding='utf-8') as f:
         for str_block in srt_blocks:
@@ -251,7 +309,12 @@ def save_subtitle_file(srt_blocks, output_srt_path, output_srt=True):
                 f.write(f"{start_time} --> {end_time}\n")
                 f.write(f"{str_block.text.strip()}\n\n")
             else:
-                f.write(f"{str_block.strip()}\n")
+                if not summary:
+                    f.write(f"{str_block.strip()}\n")
+        if (not output_srt) and summary:
+            summary_text = "\n".join([block.text.strip() for block in srt_blocks])
+            summary_text = summarize_content(summary_text)
+            f.write(summary_text)
     print(f"Subtitles extracted and saved to: {output_srt_path}")
     return
 
@@ -456,5 +519,23 @@ def main():
     except Exception as e:
         print(f"An error occurred: {str(e)}")
 
+def main_temp():
+    dir_path = '/Users/dongbingfeng/Library/Mobile Documents/com~apple~CloudDocs/temp'
+    for f in os.listdir(dir_path):
+        if f.endswith('.mp4'):
+            print(f"Processing video file: {f}")
+            video_file = os.path.join(dir_path, f)
+            audio_file = extract_audio_from_video(video_file, audio_track=0)
+            output_srt = os.path.join(dir_path, f.replace('.mp4', '.txt'))
+            original_srt_blocks = extract_subtitles_from_audio(audio_file, "large-v3", load_from_json=False, dump_to_json=False, src_lang="Chinese", output_srt=False, initial_prompt="普通话，宏观经济学")
+            save_subtitle_file(original_srt_blocks, output_srt, output_srt=False)
+def main_temp2():
+    dir_path = '/Users/dongbingfeng/Library/Mobile Documents/com~apple~CloudDocs/temp/152.理解中国经济的六层思维.txt'
+    with open(dir_path, 'r', encoding='utf-8') as f:
+        text = f.read()
+    summary = summarize_content(text)
+    print(summary)
+
 if __name__ == '__main__':
     main()
+    #main_temp2()
